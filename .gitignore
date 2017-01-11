@@ -1,0 +1,6 @@
+rpmbuild/
+
+.bash_history
+.env
+rpm-signing.asc
+rpm-signing.tar

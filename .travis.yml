@@ -1,0 +1,37 @@
+sudo: required
+language: ruby
+rvm:
+- 2.3.1
+env:
+  matrix:
+  - OS_TYPE=centos OS_VERSION=6
+  global:
+  - WORKDIR=/source
+  - secure: I9rRauzGWWpkTylU+BI7qLVFEQu7BnNkkbtgHIbyoWIpSFJIXOWSNG0zThTxWu9xjN5aRdOXlCaK6xOX2QVFeDvLCoZhXP3IiXQYEBMvuglkgDV7f5qRHsESfxfZUeaSizZ4UEiQ0wSvUvxCmzTcQ8JF730z8QfP3etrshEoC5rzhB5Nmbn9mcohEZFtWwotW6wPlPTjv3xbviZRV5YD4Esh/eyBjl9jg+Jm/OzG5IxccPkwsAEx9ynxv3Is8jIVjNFBQS0EXjoN6Q52yqa0MjzK/2C8iCpvThPjxFz3ny7hPxr7TIligKwiystKNLZIS4t3IobrnSep55AiWFUP4mIH83eEZQBIOB/r4skwWmyGS89ht6VdgzcHaa8xYEeY1fP5KHJK0aGfixZyMUOJxcnakWqAkXlBk/ljJbLYrQwIMoWuB6e5y5EyYEyOsgfUoKqvDeiGgfR4v8Cje1brpuHVh0FP4gnb4uO3lKXKHJIKs9BudIdpx7Ef8PTra153vqkqBatl1BSEo2ZVdrzOuGIpl8ZaJByXLsFwHyffdydvaUZD7Yo8uKufv3ligncpL6nQY7PyXqcw/PbyaW81Djx1V/J6L8SPP8qVw9ra5pkfrzjTm2bYeSOGT0xGki72DBRQQCv/TopP57NYZrGJnOOULD9p6Jcmg1uNoH57UDg=
+services:
+- docker
+before_install:
+- echo $passphrase | gpg --passphrase-fd 0 rpm-signing.tar.asc
+- tar xf rpm-signing.tar
+- mkdir -p $(pwd)/.gnupg && chmod 700 $(pwd)/.gnupg
+- gpg --no-default-keyring --secret-keyring .gnupg/secring.gpg --keyring .gnupg/pubring.gpg
+  --import rpm-signing.asc
+install:
+- docker build -t rpm-laksmana-centos .
+script:
+- docker run --rm=true -v $(pwd):${WORKDIR}:rw --env-file $(pwd)/.env rpm-laksmana-centos
+  bash ${WORKDIR}/build.sh
+- docker run --rm=true -v $(pwd):${WORKDIR}:rw centos:${OS_TYPE}${OS_VERSION} bash
+  -c "find /source -name \"*.rpm\" -type f | xargs -I{} yum -y localinstall {}"
+deploy:
+  provider: s3
+  access_key_id: AKIAI5BH2BYHC54BLU4A
+  secret_access_key:
+    secure: HxsyPUN6ndAnN6S+eRaQ9Wa7CUaBXda4CtB+h7GgUniUP4p2QQhL3BH8z4LgGYOb7+jKppBya6Wkzl1km/r36s/2/G8ZtzEGfBOZtd2SvO/pw6Kk1WcSorknAGs6vQmkVXFLeeIi85rW43+wmKCeTsR/pRO4ZjTW164zt4o4vvgAAwyW43fIxVFJwRo0Hwe/SQxtq8B384he9DZqLSUF6yjuxFsLJjqK5FvfscNiExgLaRA0iLfCsBEAn4NEF78US6uOO7UgTaaXhwpIG+Sl6uCevwG2MrOBCT0/I++ad36nN/C+6/zM9hyBv8xqQEtdnsz1FRL5VYnoEY4QRRSi4hGvlXs1Lh/GS81Bo4VjvyOOLXY1QXjgwCVfvnWDnR5hsYnVjV3ULxZ6AYPu4bEhsgTe3TPfYV65vvdz+XovfcijHFMptyjqEM5SEHCraDQ9bZW2wnMqCIcZwRQV+oOr7opgvKpDqERds3K/sSJju2JOvSjQZDnBQbiZBsUBJQjSbfUbEEgG4f1t+MBHDfIiKIzVYKKVMfDU8HENPC1Fg+Tdtx5KSakUadqLD6FchXXDZSCAp+7XWUqddhWqB/dBSVYZkcImgNFDU+pc7m4E+U+RDE2uFMUItN/ujffDwT7l6HnWzCby8QLmEY1S+pyMY+L3fE2u/qpexFD1pBCQu64=
+  bucket: laksmana
+  skip_cleanup: true
+  local-dir: rpmbuild/RPMS/noarch
+  upload-dir: laksmana-centos-repo
+  acl: public_read
+  on:
+    repo: beol/rpm-laksmana-centos

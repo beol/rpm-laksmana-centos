@@ -1,3 +1,4 @@
+.gnupg/
 rpmbuild/
 
 .bash_history
